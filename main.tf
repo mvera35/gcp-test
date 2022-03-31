@@ -55,3 +55,16 @@ resource "google_compute_instance_from_template" "public-server-1" {
 
   depends_on = [google_compute_instance_template.server-template]
 }
+
+resource "google_compute_instance_group_manager" "private-servers" {
+   name = "private-servers"
+   base_instance_name = "private"
+   
+   version {
+     instance_template = google_compute_instance_template.server-template.id
+   }
+
+   target_size = 2
+   depends_on = [google_compute_instance_template.server-template]
+
+}
