@@ -15,7 +15,7 @@ resource "google_compute_firewall" "firewall-ssh" {
   network = google_compute_network.custom-vpc.name
   allow {
     protocol = "tcp"
-    ports    = ["22"]
+    ports    = ["22","80","443"]
   }
   allow {
     protocol = "icmp"
@@ -52,39 +52,6 @@ resource "google_compute_subnetwork" "private-subnet"{
   depends_on = [google_compute_network.custom-vpc]
 }
 
-resource "google_compute_instance_from_template" "public-server-1" {
-  name = "public-server-1"
-  hostname = "gcp-test.com"
-  source_instance_template = google_compute_instance_template.server-template.id
-
-  network_interface {
-    network = google_compute_network.custom-vpc.name
-    subnetwork = "public-subnet"
-    access_config {
-      nat_ip = google_compute_address.static.address
-    }
-  }
-
-  provisioner "remote-exec" {
-    connection {
-      type        = "ssh"
-      user        = "mvera"
-      host        = self.network_interface.0.access_config.0.nat_ip
-      timeout     = "40s"
-      private_key = "${file("/home/mvera/.ssh/id_rsa")}"
-    }
-    inline = ["echo 'Test ssh'"]
-  }
-
-  provisioner "local-exec" {
-    command = "ansible-playbook -i '${self.network_interface.0.access_config.0.nat_ip},' --private-key /home/mvera/.ssh/id_rsa ./ansible/load-balancer.yml"
-  }
-  
-  
-  depends_on = [google_compute_instance_template.server-template,
-  google_compute_firewall.firewall-ssh]
-}
-
 resource "google_compute_instance_group_manager" "private-servers" {
    name = "private-servers"
    base_instance_name = "private"
@@ -116,6 +83,8 @@ resource "google_compute_instance_template" "server-template" {
     subnetwork = "private-subnet"
     access_config {}
   }
+
+  metadata_startup_script = "sudo apt update -y; sudo apt install nginx -y; hostname -I | awk '{print $1}' > index.html; sudo cp index.html /var/www/html/"
 
   depends_on = [google_compute_subnetwork.private-subnet, google_compute_subnetwork.public-subnet]
   metadata = {
