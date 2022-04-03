@@ -65,6 +65,32 @@ resource "google_compute_instance_group_manager" "private-servers" {
 
 }
 
+// NAT Router
+resource "google_compute_address" "nat-ip" {
+  name = "nat-ip"
+  project = file("./project-id.txt")
+}
+
+resource "google_compute_router" "nat-router" {
+  name = "nat-router"
+  network = google_compute_network.custom-vpc.name
+  depends_on = [google_compute_network.custom-vpc]
+}
+
+resource "google_compute_router_nat" "nat-gateway" {
+  name = "nat-gateway"
+  router = google_compute_router.nat-router.name
+  nat_ip_allocate_option = "MANUAL_ONLY"
+  nat_ips = [ google_compute_address.nat-ip.self_link ]
+  source_subnetwork_ip_ranges_to_nat = "ALL_SUBNETWORKS_ALL_IP_RANGES" 
+  depends_on = [ google_compute_address.nat-ip ]
+}
+
+output "nat_ip_address" {
+  value = google_compute_address.nat-ip.address
+}
+// NAT Router
+
 resource "google_compute_instance_template" "server-template" {
   name = "server-template"
   description = "Plantilla usada para montar servidores sencillos"
