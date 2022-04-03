@@ -1,0 +1,10 @@
+---
+- name: Install and Config nginx as a load balancer
+  hosts: all
+  remote_user: mvera
+  become: yes
+  tasks:
+  - name: Install nginx
+    apt:
+      name: nginx
+      state: latest

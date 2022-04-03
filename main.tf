@@ -65,6 +65,21 @@ resource "google_compute_instance_from_template" "public-server-1" {
     }
   }
 
+  provisioner "remote-exec" {
+    connection {
+      type        = "ssh"
+      user        = "mvera"
+      host        = self.network_interface.0.access_config.0.nat_ip
+      timeout     = "40s"
+      private_key = "${file("/home/mvera/.ssh/id_rsa")}"
+    }
+    inline = ["echo 'Test ssh'"]
+  }
+
+  provisioner "local-exec" {
+    command = "ansible-playbook -i '${self.network_interface.0.access_config.0.nat_ip},' --private-key /home/mvera/.ssh/id_rsa ./ansible/load-balancer.yml"
+  }
+  
   
   depends_on = [google_compute_instance_template.server-template,
   google_compute_firewall.firewall-ssh]
