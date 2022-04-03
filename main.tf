@@ -161,14 +161,9 @@ resource "google_compute_instance_template" "server-template" {
   network_interface {
     network = "custom-vpc"
     subnetwork = "private-subnet"
-    access_config {}
   }
 
   metadata_startup_script = "sudo apt update -y; sudo apt install nginx -y; hostname -I | awk '{print $1}' > index.html; sudo cp index.html /var/www/html/"
 
   depends_on = [google_compute_subnetwork.private-subnet, google_compute_subnetwork.public-subnet]
-  metadata = {
-    ssh-keys = "mvera:${file("/home/mvera/.ssh/id_rsa.pub")}"
-  }
-
 }
