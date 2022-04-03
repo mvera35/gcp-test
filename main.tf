@@ -60,6 +60,11 @@ resource "google_compute_instance_group_manager" "private-servers" {
      instance_template = google_compute_instance_template.server-template.id
    }
 
+   named_port {
+     name = "http"
+     port = "80"
+   }
+
    target_size = 2
    depends_on = [google_compute_instance_template.server-template]
 
@@ -90,6 +95,55 @@ output "nat_ip_address" {
   value = google_compute_address.nat-ip.address
 }
 // NAT Router
+
+// Balanceador de Cargas
+
+resource "google_compute_global_forwarding_rule" "global_forwarding_rule" {
+  name = "global-forwarding-rule"
+  project = file("./project-id.txt")
+  target = google_compute_target_http_proxy.target_http_proxy.self_link
+  port_range = "80"
+}
+
+resource "google_compute_target_http_proxy" "target_http_proxy" {
+  name = "proxy"
+  project = file("./project-id.txt")
+  url_map = google_compute_url_map.url_map.self_link
+}
+
+resource "google_compute_backend_service" "backend_service" {
+  name = "backend-service"
+  project = file("./project-id.txt")
+  port_name = "http"
+  protocol = "HTTP"
+  health_checks =["${google_compute_health_check.healthcheck.self_link}"]
+  backend {
+    group = google_compute_instance_group_manager.private-servers.instance_group
+    balancing_mode = "RATE"
+    max_rate_per_instance = 100
+  }
+}
+
+resource "google_compute_health_check" "healthcheck" {
+  name = "healthcheck"
+  timeout_sec = 1
+  check_interval_sec = 1
+  http_health_check {
+    port = 80
+  }
+}
+
+resource "google_compute_url_map" "url_map" {
+  name = "load-balancer"
+  project = file("./project-id.txt")
+  default_service = google_compute_backend_service.backend_service.self_link
+}
+
+output "load-balancer-ip-address" {
+  value = google_compute_global_forwarding_rule.global_forwarding_rule.ip_address
+}
+
+// Balanceador de Cargas
 
 resource "google_compute_instance_template" "server-template" {
   name = "server-template"
