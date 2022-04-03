@@ -15,14 +15,10 @@ resource "google_compute_firewall" "firewall-ssh" {
   network = google_compute_network.custom-vpc.name
   allow {
     protocol = "tcp"
-    ports    = ["22","80","443"]
+    ports    = ["80","443"]
   }
   allow {
     protocol = "icmp"
-  }
-  allow { //RDP
-    protocol = "tcp"
-    ports = ["3389"]
   }
 
   source_ranges = ["0.0.0.0/0"]   
