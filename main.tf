@@ -1,17 +1,17 @@
 provider "google" {
-  credentials = file("./credentials-gcp.json")
-  project = file("./project-id.txt")
-  region  = "us-west4"
-  zone    = "us-west4-b"
+  credentials = file("${var.credentials_gcp}")
+  project = file("${var.project_id}")
+  region  = "${var.project_region}"
+  zone    = "${var.project_zone}"
 }
 
 resource "google_compute_network" "custom-vpc" {
-  name = "custom-vpc"
+  name = "${var.project_name}-custom-vpc"
   auto_create_subnetworks = "false"
 }
 
 resource "google_compute_firewall" "firewall-ssh" {
-  name    = "firewall-externalssh"
+  name    = "${var.project_name}-firewall-externalssh"
   network = google_compute_network.custom-vpc.name
   allow {
     protocol = "tcp"
@@ -31,29 +31,29 @@ resource "google_compute_firewall" "firewall-ssh" {
 }
 
 resource "google_compute_address" "static" {
-  name = "public-address"
-  project = file("./project-id.txt")
+  name = "${var.project_name}-public-address"
+  project = file("${var.project_id}")
   depends_on = [ google_compute_firewall.firewall-ssh ]
 }
 
 resource "google_compute_subnetwork" "public-subnet"{
-  name = "public-subnet"
+  name = "${var.project_name}-public-subnet"
   ip_cidr_range = "10.0.0.0/24"
-  region  = "us-west4"
+  region  = "${var.project_region}"
   network = google_compute_network.custom-vpc.id
   depends_on = [google_compute_network.custom-vpc]
 }
 
 resource "google_compute_subnetwork" "private-subnet"{
-  name = "private-subnet"
+  name = "${var.project_name}-private-subnet"
   ip_cidr_range = "10.0.1.0/24"
-  region  = "us-west4"
+  region  = "${var.project_region}"
   network = google_compute_network.custom-vpc.id
   depends_on = [google_compute_network.custom-vpc]
 }
 
 resource "google_compute_instance_group_manager" "private-servers" {
-   name = "private-servers"
+   name = "${var.project_name}-private-servers"
    base_instance_name = "private"
    
    version {
@@ -72,18 +72,18 @@ resource "google_compute_instance_group_manager" "private-servers" {
 
 // NAT Router
 resource "google_compute_address" "nat-ip" {
-  name = "nat-ip"
-  project = file("./project-id.txt")
+  name = "${var.project_name}-nat-ip"
+  project = file("${var.project_id}")
 }
 
 resource "google_compute_router" "nat-router" {
-  name = "nat-router"
+  name = "${var.project_name}-nat-router"
   network = google_compute_network.custom-vpc.name
   depends_on = [google_compute_network.custom-vpc]
 }
 
 resource "google_compute_router_nat" "nat-gateway" {
-  name = "nat-gateway"
+  name = "${var.project_name}-nat-gateway"
   router = google_compute_router.nat-router.name
   nat_ip_allocate_option = "MANUAL_ONLY"
   nat_ips = [ google_compute_address.nat-ip.self_link ]
@@ -99,21 +99,21 @@ output "nat_ip_address" {
 // Balanceador de Cargas
 
 resource "google_compute_global_forwarding_rule" "global_forwarding_rule" {
-  name = "global-forwarding-rule"
-  project = file("./project-id.txt")
+  name = "${var.project_name}-global-forwarding-rule"
+  project = file("${var.project_id}")
   target = google_compute_target_http_proxy.target_http_proxy.self_link
   port_range = "80"
 }
 
 resource "google_compute_target_http_proxy" "target_http_proxy" {
-  name = "proxy"
-  project = file("./project-id.txt")
+  name = "${var.project_name}-proxy"
+  project = file("${var.project_id}")
   url_map = google_compute_url_map.url_map.self_link
 }
 
 resource "google_compute_backend_service" "backend_service" {
-  name = "backend-service"
-  project = file("./project-id.txt")
+  name = "${var.project_name}-backend-service"
+  project = file("${var.project_id}")
   port_name = "http"
   protocol = "HTTP"
   health_checks =["${google_compute_health_check.healthcheck.self_link}"]
@@ -125,7 +125,7 @@ resource "google_compute_backend_service" "backend_service" {
 }
 
 resource "google_compute_health_check" "healthcheck" {
-  name = "healthcheck"
+  name = "${var.project_name}-healthcheck"
   timeout_sec = 1
   check_interval_sec = 1
   http_health_check {
@@ -134,8 +134,8 @@ resource "google_compute_health_check" "healthcheck" {
 }
 
 resource "google_compute_url_map" "url_map" {
-  name = "load-balancer"
-  project = file("./project-id.txt")
+  name = "${var.project_name}-load-balancer"
+  project = file("${var.project_id}")
   default_service = google_compute_backend_service.backend_service.self_link
 }
 
@@ -146,7 +146,7 @@ output "load-balancer-ip-address" {
 // Balanceador de Cargas
 
 resource "google_compute_instance_template" "server-template" {
-  name = "server-template"
+  name = "${var.project_name}-server-template"
   description = "Plantilla usada para montar servidores sencillos"
   machine_type = "f1-micro"
   tags = ["externalssh"]
@@ -159,8 +159,8 @@ resource "google_compute_instance_template" "server-template" {
   }
 
   network_interface {
-    network = "custom-vpc"
-    subnetwork = "private-subnet"
+    network = google_compute_network.custom-vpc.name
+    subnetwork = google_compute_subnetwork.private-subnet.name
   }
 
   metadata_startup_script = "sudo apt update -y; sudo apt install nginx -y; hostname -I | awk '{print $1}' > index.html; sudo cp index.html /var/www/html/"
