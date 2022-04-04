@@ -5,6 +5,13 @@ provider "google" {
   zone    = "${var.project_zone}"
 }
 
+provider "google-beta" {
+  credentials = file("${var.credentials_gcp}")
+  project = file("${var.project_id}")
+  region  = "${var.project_region}"
+  zone    = "${var.project_zone}"
+}
+
 resource "google_compute_network" "custom-vpc" {
   name = "${var.project_name}-custom-vpc"
   auto_create_subnetworks = "false"
@@ -47,6 +54,28 @@ resource "google_compute_subnetwork" "private-subnet"{
   network = google_compute_network.custom-vpc.id
   depends_on = [google_compute_network.custom-vpc]
 }
+
+// Política de autoescalado
+resource "google_compute_autoscaler" "scale-in" {
+  name   = "${var.project_name}-autoscaler"
+  zone   = "${var.project_zone}"
+  target = google_compute_instance_group_manager.private-servers.id
+
+  autoscaling_policy {
+    max_replicas    = 3
+    min_replicas    = 2
+    scale_in_control {
+      max_scaled_in_replicas {
+        percent = 100
+      }
+      time_window_sec = 60
+    }
+    cpu_utilization { // scale in : CPU utilization > 40%
+      target = 0.4 
+    }
+  }
+}
+// Política de autoescalado
 
 resource "google_compute_instance_group_manager" "private-servers" {
    name = "${var.project_name}-private-servers"
