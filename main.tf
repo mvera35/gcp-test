@@ -5,13 +5,6 @@ provider "google" {
   zone    = "${var.project_zone}"
 }
 
-provider "google-beta" {
-  credentials = file("${var.credentials_gcp}")
-  project = file("${var.project_id}")
-  region  = "${var.project_region}"
-  zone    = "${var.project_zone}"
-}
-
 resource "google_compute_network" "custom-vpc" {
   name = "${var.project_name}-custom-vpc"
   auto_create_subnetworks = "false"
