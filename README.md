@@ -1,4 +1,4 @@
-#gcp-test
+# gcp-test
 Prueba de terraform con gcp implementando un balanceador de cargas y compute instances.
 ### Tecnologías usadas
 
