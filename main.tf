@@ -26,12 +26,6 @@ resource "google_compute_firewall" "firewall-ssh" {
   depends_on = [google_compute_network.custom-vpc]
 }
 
-resource "google_compute_address" "static" {
-  name = "${var.project_name}-public-address"
-  project = file("${var.project_id}")
-  depends_on = [ google_compute_firewall.firewall-ssh ]
-}
-
 resource "google_compute_subnetwork" "public-subnet"{
   name = "${var.project_name}-public-subnet"
   ip_cidr_range = "10.0.0.0/24"
