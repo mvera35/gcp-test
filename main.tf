@@ -26,6 +26,7 @@ resource "google_compute_firewall" "firewall-ssh" {
   depends_on = [google_compute_network.custom-vpc]
 }
 
+// Subredes pública y privada
 resource "google_compute_subnetwork" "public-subnet"{
   name = "${var.project_name}-public-subnet"
   ip_cidr_range = "10.0.0.0/24"
@@ -41,6 +42,7 @@ resource "google_compute_subnetwork" "private-subnet"{
   network = google_compute_network.custom-vpc.id
   depends_on = [google_compute_network.custom-vpc]
 }
+// Subredes pública y privada
 
 // Política de autoescalado
 resource "google_compute_autoscaler" "scale-in" {
@@ -64,6 +66,7 @@ resource "google_compute_autoscaler" "scale-in" {
 }
 // Política de autoescalado
 
+// Compute instances
 resource "google_compute_instance_group_manager" "private-servers" {
    name = "${var.project_name}-private-servers"
    base_instance_name = "private"
@@ -81,6 +84,7 @@ resource "google_compute_instance_group_manager" "private-servers" {
    depends_on = [google_compute_instance_template.server-template]
 
 }
+// Compute instances
 
 // NAT Router
 resource "google_compute_address" "nat-ip" {
@@ -157,6 +161,7 @@ output "load-balancer-ip-address" {
 
 // Balanceador de Cargas
 
+// Plantilla del servidor
 resource "google_compute_instance_template" "server-template" {
   name = "${var.project_name}-server-template"
   description = "Plantilla usada para montar servidores sencillos"
@@ -174,7 +179,7 @@ resource "google_compute_instance_template" "server-template" {
     network = google_compute_network.custom-vpc.name
     subnetwork = google_compute_subnetwork.private-subnet.name
   }
-
+  //Instalación de nginx
   metadata_startup_script = "sudo apt update -y; sudo apt install nginx -y; hostname -I | awk '{print $1}' > index.html; sudo cp index.html /var/www/html/"
 
   depends_on = [google_compute_subnetwork.private-subnet, google_compute_subnetwork.public-subnet]
